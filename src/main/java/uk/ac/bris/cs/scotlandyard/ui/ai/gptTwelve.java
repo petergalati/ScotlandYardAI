@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.lang.Math.*;
 
 import javax.annotation.Nonnull;
 
@@ -33,7 +34,15 @@ public class gptTwelve implements Ai {
 		int scoreMax = Integer.MIN_VALUE;
 		Move bestMove = moves.get(new Random().nextInt(moves.size()));
 
+		//keep track of current mrX location to stop him from going back and forth:
+		int lastMrX = moves.get(0).source();
+
+
 		for (Move move : moves) {
+			if (move.source() == lastMrX) {
+				continue;
+			}
+
 			Board.GameState state = (Board.GameState) board;
 			state = state.advance(move);
 			int newScore = score(state);
@@ -86,8 +95,9 @@ public class gptTwelve implements Ai {
 				freedomScore++;
 			}
 		}
+		System.out.println(distanceScore);
 
-		totalScore = distanceScore + freedomScore;
+		totalScore = distanceScore*2 + freedomScore;
 
 		return totalScore;
 
@@ -97,27 +107,45 @@ public class gptTwelve implements Ai {
 
 		List<Integer> visited = new ArrayList<>();
 		Queue<Integer> notVisited = new LinkedList<>();
-		int distance = 0;
 
 		visited.add(mrXLocation);
 		notVisited.add(mrXLocation);
 
+		int distance = 0;
+		int currentDepthNodeCount = 1;
+		int nextDepthNodeCount = 0;
 		boolean nodeFound = false;
+
+
 
 		while (!notVisited.isEmpty() && !nodeFound) {
 			int from = notVisited.remove();
+			currentDepthNodeCount--;
+
 			for (int node : board.getSetup().graph.adjacentNodes(from)) {
 				if (!visited.contains(node)) {
 					visited.add(node);
 					notVisited.add(node);
-					distance++;
+					nextDepthNodeCount++;
 					if (node == detectiveLocation) {
 						nodeFound = true;
 						break;
 					}
 				}
 			}
+
+			if (currentDepthNodeCount == 0) {
+				currentDepthNodeCount = nextDepthNodeCount;
+				nextDepthNodeCount = 0;
+				distance++;
+			}
+
+
 		}
+
+		//square root distance in order to weight detectives closer to mrX more heavily
+		//than those further away
+		distance = (int) Math.ceil(Math.sqrt(distance));
 		return distance;
 	}
 }
